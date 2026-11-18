@@ -5,30 +5,51 @@ document.addEventListener('DOMContentLoaded', () => {
     const stopBtn = document.getElementById('stopBtn');
     const playBtn = document.getElementById('playBtn');
     const macroInput = document.getElementById('macroInput');
-    const playbackCursor = document.getElementById('playbackCursor');
 
+    let socket;
     let isRecording = false;
     let isPlaying = false;
     let recordedEvents = [];
     let recordingStartTime = 0;
+    
+    // Track physical screen dimensions via shared video stream
+    let screenWidth = window.screen.width;
+    let screenHeight = window.screen.height;
 
-    // 1. Screen Sharing Permission
+    // Connect to local Python WebSocket bridge
+    function connectWebSocket() {
+        socket = new WebSocket('ws://localhost:8765');
+        socket.onopen = () => console.log("Connected to local OS automation bridge.");
+        socket.onerror = (err) => console.log("WebSocket error. Ensure Python server.py is running.", err);
+    }
+    connectWebSocket();
+
+    // 1. Request Screen Sharing (Must choose "Entire Screen" for global tracking)
     startBtn.addEventListener('click', async () => {
         try {
-            const stream = await navigator.mediaDevices.getDisplayMedia({ video: { cursor: "always" }, audio: false });
+            const stream = await navigator.mediaDevices.getDisplayMedia({ 
+                video: { cursor: "always" }, 
+                audio: false 
+            });
+            
             screenPreview.srcObject = stream;
             screenPreview.style.display = 'block';
             startBtn.style.display = 'none';
-            
-            // Enable recording once screen is shared
             recordBtn.disabled = false;
+
+            // Adjust scaling if video dimensions reflect actual screen resolution
+            const track = stream.getVideoTracks()[0];
+            const settings = track.getSettings();
+            if (settings.width) screenWidth = settings.width;
+            if (settings.height) screenHeight = settings.height;
+
         } catch (error) {
             console.error("Error sharing screen:", error);
-            alert("Permission denied or error occurred.");
+            alert("Permission denied.");
         }
     });
 
-    // 2. Recording Logic
+    // 2. Record Actions (Global window listener catches events even outside browser components)
     recordBtn.addEventListener('click', () => {
         recordedEvents = [];
         recordingStartTime = Date.now();
@@ -40,48 +61,58 @@ document.addEventListener('DOMContentLoaded', () => {
         macroInput.value = '';
         macroInput.focus();
 
-        console.log("Recording started...");
+        console.log("Global recording started...");
     });
 
-    // Capture Mouse Movements during recording
+    // Capture global mouse movements
     window.addEventListener('mousemove', (e) => {
         if (!isRecording) return;
-        const timestamp = Date.now() - recordingStartTime;
+        
+        // Map browser window coordinates to absolute screen coordinates
+        const absoluteX = Math.round((e.screenX / window.innerWidth) * screenWidth);
+        const absoluteY = Math.round((e.screenY / window.innerHeight) * screenHeight);
+
         recordedEvents.push({
             type: 'mousemove',
-            x: e.clientX,
-            y: e.clientY,
-            time: timestamp
+            x: e.screenX, // Using absolute screen properties
+            y: e.screenY,
+            time: Date.now() - recordingStartTime
         });
     });
 
-    // Capture Typing (letters and numbers) during recording
+    // Capture clicks anywhere on the window
+    window.addEventListener('click', (e) => {
+        if (!isRecording) return;
+        recordedEvents.push({
+            type: 'click',
+            x: e.screenX,
+            y: e.screenY,
+            button: 'left',
+            time: Date.now() - recordingStartTime
+        });
+    });
+
+    // Capture Typing
     macroInput.addEventListener('input', (e) => {
         if (!isRecording) return;
-        const timestamp = Date.now() - recordingStartTime;
         recordedEvents.push({
-            type: 'input',
-            value: macroInput.value,
-            time: timestamp
+            type: 'type',
+            text: macroInput.value,
+            time: Date.now() - recordingStartTime
         });
     });
 
     // 3. Stop Recording
     stopBtn.addEventListener('click', () => {
-        if (!isRecording && !isPlaying) return;
-        
         isRecording = false;
         isPlaying = false;
-        
         recordBtn.disabled = false;
         stopBtn.disabled = true;
         playBtn.disabled = recordedEvents.length === 0;
-        playbackCursor.style.display = 'none';
-
-        console.log("Recording stopped. Total events captured:", recordedEvents.length);
+        console.log("Recording stopped.");
     });
 
-    // 4. Playback Logic
+    // 4. Playback (Sends instructions to Python to control the real OS cursor/keyboard)
     playBtn.addEventListener('click', () => {
         if (recordedEvents.length === 0) return;
 
@@ -89,41 +120,25 @@ document.addEventListener('DOMContentLoaded', () => {
         recordBtn.disabled = true;
         stopBtn.disabled = false;
         playBtn.disabled = true;
-        macroInput.value = '';
-        playbackCursor.style.display = 'block';
 
-        console.log("Playback started...");
+        console.log("Global playback starting. Relinquishing local control...");
 
-        const playbackStartTime = Date.now();
-
-        // Execute each recorded event at its relative timestamp
         recordedEvents.forEach(event => {
             setTimeout(() => {
-                if (!isPlaying) return; // Stop if user clicked Stop
+                if (!isPlaying || !socket || socket.readyState !== WebSocket.OPEN) return;
 
-                if (event.type === 'mousemove') {
-                    // Move the visual cursor
-                    playbackCursor.style.left = `${event.x}px`;
-                    playbackCursor.style.top = `${event.y}px`;
-                } else if (event.type === 'input') {
-                    // Mimic the typed letters and numbers
-                    macroInput.value = event.value;
-                }
+                // Send command to local Python backend to execute on OS
+                socket.send(JSON.stringify(event));
 
-                // Check if this is the last event
                 if (event === recordedEvents[recordedEvents.length - 1]) {
                     setTimeout(() => {
-                        if (isPlaying) {
-                            isPlaying = false;
-                            stopBtn.disabled = true;
-                            recordBtn.disabled = false;
-                            playBtn.disabled = false;
-                            playbackCursor.style.display = 'none';
-                            console.log("Playback finished.");
-                        }
+                        isPlaying = false;
+                        stopBtn.disabled = true;
+                        recordBtn.disabled = false;
+                        playBtn.disabled = false;
+                        console.log("Global playback finished.");
                     }, 500);
                 }
-
             }, event.time);
         });
     });
