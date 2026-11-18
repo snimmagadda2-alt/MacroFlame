@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "Mitt Eget TinyTask",
+  "version": "1.0",
+  "description": "Upprepar klick och skriver text",
+  "permissions": ["activeTab", "scripting"],
+  "action": {
+    "default_popup": "popup.html"
+  }
+}
