@@ -1,4 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
+    const startShareBtn = document.getElementById('startShareBtn');
+    const screenPreview = document.getElementById('screenPreview');
+    const placeholderText = document.getElementById('placeholderText');
     const recordBtn = document.getElementById('recordBtn');
     const stopBtn = document.getElementById('stopBtn');
     const playBtn = document.getElementById('playBtn');
@@ -18,7 +21,37 @@ document.addEventListener('DOMContentLoaded', () => {
         simulatedTab.innerText = simulatedTab.classList.contains('active') ? 'Tab Opened!' : '+ New Tab';
     });
 
-    // 1. Start Recording
+    // 1. Request Screen Sharing
+    startShareBtn.addEventListener('click', async () => {
+        try {
+            const stream = await navigator.mediaDevices.getDisplayMedia({ 
+                video: { cursor: "always" }, 
+                audio: false 
+            });
+            
+            screenPreview.srcObject = stream;
+            screenPreview.style.display = 'block';
+            placeholderText.style.display = 'none';
+            startShareBtn.disabled = true;
+            recordBtn.disabled = false;
+
+            // Handle user stopping screen share via browser UI
+            stream.getVideoTracks()[0].onended = () => {
+                screenPreview.style.display = 'none';
+                placeholderText.style.display = 'block';
+                startShareBtn.disabled = false;
+                recordBtn.disabled = true;
+                stopBtn.disabled = true;
+                playBtn.disabled = true;
+            };
+
+        } catch (error) {
+            console.error("Error sharing screen:", error);
+            alert("Screen sharing permission denied or cancelled.");
+        }
+    });
+
+    // 2. Start Recording
     recordBtn.addEventListener('click', () => {
         recordedEvents = [];
         recordingStartTime = Date.now();
@@ -67,7 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // 2. Stop Recording
+    // 3. Stop Recording
     stopBtn.addEventListener('click', () => {
         isRecording = false;
         isPlaying = false;
@@ -79,7 +112,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("Recording stopped. Events captured:", recordedEvents.length);
     });
 
-    // 3. Playback with Visible Custom Cursor
+    // 4. Playback with Visible Custom Cursor
     playBtn.addEventListener('click', () => {
         if (recordedEvents.length === 0) return;
 
@@ -109,7 +142,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     // If it was a click event, trigger a real click on whatever element is underneath
                     if (event.type === 'click') {
-                        // Add a visual click pop effect
                         customCursor.style.transform = 'translate(-50%, -50%) scale(0.8)';
                         setTimeout(() => customCursor.style.transform = 'translate(-50%, -50%) scale(1)', 100);
 
