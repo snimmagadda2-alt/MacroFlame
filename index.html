@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Screen Share and Macro Controller</title>
+    <title>Screen Share and Macro Recorder</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -15,31 +15,37 @@
             justify-content: center;
             height: 100vh;
             margin: 0;
+            overflow: hidden;
         }
         .container {
             background: #1e1e1e;
             padding: 30px;
             border-radius: 8px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-            width: 400px;
+            width: 450px;
             text-align: center;
+            z-index: 10;
         }
         button {
             background-color: #6200ee;
             color: white;
             border: none;
-            padding: 10px 20px;
-            font-size: 16px;
+            padding: 10px 15px;
+            font-size: 14px;
             border-radius: 4px;
             cursor: pointer;
-            margin-top: 15px;
+            margin: 5px;
         }
         button:hover {
             background-color: #3700b3;
         }
+        button:disabled {
+            background-color: #444;
+            cursor: not-allowed;
+        }
         video {
             width: 100%;
-            max-height: 200px;
+            max-height: 150px;
             margin-top: 15px;
             border: 1px solid #333;
             display: none;
@@ -55,18 +61,41 @@
             padding: 8px;
             resize: none;
         }
+        .controls-row {
+            margin-top: 15px;
+        }
+        /* Simulated cursor element for playback */
+        #playbackCursor {
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            background-color: #03dac6;
+            border-radius: 50%;
+            pointer-events: none;
+            display: none;
+            z-index: 9999;
+            transition: transform 0.05s linear;
+        }
     </style>
 </head>
 <body>
 
+    <div id="playbackCursor"></div>
+
     <div class="container">
-        <h2>Remote Automation Suite</h2>
-        <p>Click below to grant screen-sharing access and initialize control protocols.</p>
+        <h2>Macro Recorder & Player</h2>
+        <p>Grant screen permission and use the recorder below.</p>
         <button id="startBtn">Request Screen Permission</button>
         
         <video id="screenPreview" autoplay playsinline></video>
         
-        <textarea id="macroInput" placeholder="Type here to test macro mirroring..."></textarea>
+        <div class="controls-row">
+            <button id="recordBtn" disabled>Record</button>
+            <button id="stopBtn" disabled>Stop</button>
+            <button id="playBtn" disabled>Play</button>
+        </div>
+
+        <textarea id="macroInput" placeholder="Type letters and numbers here while recording..."></textarea>
     </div>
 
     <script src="script.js"></script>
