@@ -1,118 +1,85 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const startBtn = document.getElementById('startBtn');
-    const screenPreview = document.getElementById('screenPreview');
     const recordBtn = document.getElementById('recordBtn');
     const stopBtn = document.getElementById('stopBtn');
     const playBtn = document.getElementById('playBtn');
     const macroInput = document.getElementById('macroInput');
+    const customCursor = document.getElementById('customCursor');
+    const workspace = document.getElementById('workspace');
+    const simulatedTab = document.getElementById('simulatedTab');
 
-    let socket;
     let isRecording = false;
     let isPlaying = false;
     let recordedEvents = [];
     let recordingStartTime = 0;
-    
-    // Track physical screen dimensions via shared video stream
-    let screenWidth = window.screen.width;
-    let screenHeight = window.screen.height;
 
-    // Connect to local Python WebSocket bridge
-    function connectWebSocket() {
-        socket = new WebSocket('ws://localhost:8765');
-        socket.onopen = () => console.log("Connected to local OS automation bridge.");
-        socket.onerror = (err) => console.log("WebSocket error. Ensure Python server.py is running.", err);
-    }
-    connectWebSocket();
-
-    // 1. Request Screen Sharing (Must choose "Entire Screen" for global tracking)
-    startBtn.addEventListener('click', async () => {
-        try {
-            const stream = await navigator.mediaDevices.getDisplayMedia({ 
-                video: { cursor: "always" }, 
-                audio: false 
-            });
-            
-            screenPreview.srcObject = stream;
-            screenPreview.style.display = 'block';
-            startBtn.style.display = 'none';
-            recordBtn.disabled = false;
-
-            // Adjust scaling if video dimensions reflect actual screen resolution
-            const track = stream.getVideoTracks()[0];
-            const settings = track.getSettings();
-            if (settings.width) screenWidth = settings.width;
-            if (settings.height) screenHeight = settings.height;
-
-        } catch (error) {
-            console.error("Error sharing screen:", error);
-            alert("Permission denied.");
-        }
+    // Interactive action for the simulated tab
+    simulatedTab.addEventListener('click', () => {
+        simulatedTab.classList.toggle('active');
+        simulatedTab.innerText = simulatedTab.classList.contains('active') ? 'Tab Opened!' : '+ New Tab';
     });
 
-    // 2. Record Actions (Global window listener catches events even outside browser components)
+    // 1. Start Recording
     recordBtn.addEventListener('click', () => {
         recordedEvents = [];
         recordingStartTime = Date.now();
         isRecording = true;
-        
+
         recordBtn.disabled = true;
         stopBtn.disabled = false;
         playBtn.disabled = true;
         macroInput.value = '';
         macroInput.focus();
 
-        console.log("Global recording started...");
+        console.log("Recording started...");
     });
 
-    // Capture global mouse movements
-    window.addEventListener('mousemove', (e) => {
+    // Capture Mouse Movements inside the workspace
+    workspace.addEventListener('mousemove', (e) => {
         if (!isRecording) return;
-        
-        // Map browser window coordinates to absolute screen coordinates
-        const absoluteX = Math.round((e.screenX / window.innerWidth) * screenWidth);
-        const absoluteY = Math.round((e.screenY / window.innerHeight) * screenHeight);
-
+        const rect = workspace.getBoundingClientRect();
         recordedEvents.push({
             type: 'mousemove',
-            x: e.screenX, // Using absolute screen properties
-            y: e.screenY,
+            x: e.clientX - rect.left,
+            y: e.clientY - rect.top,
             time: Date.now() - recordingStartTime
         });
     });
 
-    // Capture clicks anywhere on the window
-    window.addEventListener('click', (e) => {
+    // Capture Clicks inside the workspace
+    workspace.addEventListener('click', (e) => {
         if (!isRecording) return;
+        const rect = workspace.getBoundingClientRect();
         recordedEvents.push({
             type: 'click',
-            x: e.screenX,
-            y: e.screenY,
-            button: 'left',
+            x: e.clientX - rect.left,
+            y: e.clientY - rect.top,
             time: Date.now() - recordingStartTime
         });
     });
 
     // Capture Typing
-    macroInput.addEventListener('input', (e) => {
+    macroInput.addEventListener('input', () => {
         if (!isRecording) return;
         recordedEvents.push({
-            type: 'type',
-            text: macroInput.value,
+            type: 'input',
+            value: macroInput.value,
             time: Date.now() - recordingStartTime
         });
     });
 
-    // 3. Stop Recording
+    // 2. Stop Recording
     stopBtn.addEventListener('click', () => {
         isRecording = false;
         isPlaying = false;
         recordBtn.disabled = false;
         stopBtn.disabled = true;
         playBtn.disabled = recordedEvents.length === 0;
-        console.log("Recording stopped.");
+        customCursor.style.display = 'none';
+
+        console.log("Recording stopped. Events captured:", recordedEvents.length);
     });
 
-    // 4. Playback (Sends instructions to Python to control the real OS cursor/keyboard)
+    // 3. Playback with Visible Custom Cursor
     playBtn.addEventListener('click', () => {
         if (recordedEvents.length === 0) return;
 
@@ -120,25 +87,56 @@ document.addEventListener('DOMContentLoaded', () => {
         recordBtn.disabled = true;
         stopBtn.disabled = false;
         playBtn.disabled = true;
+        macroInput.value = '';
+        
+        // Show custom cursor
+        customCursor.style.display = 'block';
+        console.log("Playback started...");
 
-        console.log("Global playback starting. Relinquishing local control...");
+        const workspaceRect = workspace.getBoundingClientRect();
 
         recordedEvents.forEach(event => {
             setTimeout(() => {
-                if (!isPlaying || !socket || socket.readyState !== WebSocket.OPEN) return;
+                if (!isPlaying) return;
 
-                // Send command to local Python backend to execute on OS
-                socket.send(JSON.stringify(event));
+                if (event.type === 'mousemove' || event.type === 'click') {
+                    // Position the custom cursor relative to the workspace
+                    const absoluteX = workspaceRect.left + event.x;
+                    const absoluteY = workspaceRect.top + event.y;
 
+                    customCursor.style.left = `${absoluteX}px`;
+                    customCursor.style.top = `${absoluteY}px`;
+
+                    // If it was a click event, trigger a real click on whatever element is underneath
+                    if (event.type === 'click') {
+                        // Add a visual click pop effect
+                        customCursor.style.transform = 'translate(-50%, -50%) scale(0.8)';
+                        setTimeout(() => customCursor.style.transform = 'translate(-50%, -50%) scale(1)', 100);
+
+                        const elementHit = document.elementFromPoint(absoluteX, absoluteY);
+                        if (elementHit) {
+                            elementHit.click();
+                        }
+                    }
+                } else if (event.type === 'input') {
+                    // Replay typed text
+                    macroInput.value = event.value;
+                }
+
+                // End of playback check
                 if (event === recordedEvents[recordedEvents.length - 1]) {
                     setTimeout(() => {
-                        isPlaying = false;
-                        stopBtn.disabled = true;
-                        recordBtn.disabled = false;
-                        playBtn.disabled = false;
-                        console.log("Global playback finished.");
+                        if (isPlaying) {
+                            isPlaying = false;
+                            stopBtn.disabled = true;
+                            recordBtn.disabled = false;
+                            playBtn.disabled = false;
+                            customCursor.style.display = 'none';
+                            console.log("Playback finished.");
+                        }
                     }, 500);
                 }
+
             }, event.time);
         });
     });
