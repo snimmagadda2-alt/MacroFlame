@@ -1,126 +1,74 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>WebMacro — TinyTask Clone for Web</title>
-  <link rel="stylesheet" href="style.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Screen Share and Macro Controller</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #121212;
+            color: #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background: #1e1e1e;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            width: 400px;
+            text-align: center;
+        }
+        button {
+            background-color: #6200ee;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+        button:hover {
+            background-color: #3700b3;
+        }
+        video {
+            width: 100%;
+            max-height: 200px;
+            margin-top: 15px;
+            border: 1px solid #333;
+            display: none;
+        }
+        textarea {
+            width: 100%;
+            height: 80px;
+            margin-top: 15px;
+            background: #2d2d2d;
+            color: #fff;
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 8px;
+            resize: none;
+        }
+    </style>
 </head>
 <body>
 
-  <!-- TOP HEADER -->
-  <header>
-    <div class="brand">
-      <div class="brand-icon">M</div>
-      <div>
-        <h1>WebMacro Studio</h1>
-        <p>Standalone TinyTask-style click &amp; keystroke recorder</p>
-      </div>
-    </div>
-    <button id="openMacroBtn" class="btn-launch">
-      <span>⚡</span> Use Macro
-    </button>
-  </header>
-
-  <!-- TEST SANDBOX AREA -->
-  <main class="sandbox">
-    <!-- Left Card: Click & Button Automation Test -->
-    <section class="card">
-      <h2>
-        Click Target Sandbox
-        <span class="badge">Mouse Test</span>
-      </h2>
-      <p class="desc">
-        Click <strong>Use Macro</strong>, hit <strong>Record</strong>, wait for the 3-2-1 countdown, and click these buttons to test automated clicking.
-      </p>
-      <div class="click-zone">
-        <div id="counterDisplay" class="counter-display">0</div>
-        <div class="test-btn-row">
-          <button class="btn-test" onclick="updateCounter(1)">+1 Click</button>
-          <button class="btn-test" onclick="updateCounter(5)">+5 Boost</button>
-          <button class="btn-test" onclick="resetCounter()">Reset</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- Right Card: Letters & Numbers Typing Test -->
-    <section class="card">
-      <h2>
-        Typing &amp; Numbers Sandbox
-        <span class="badge">Keyboard Test</span>
-      </h2>
-      <p class="desc">
-        Click inside any box below while recording and type letters, numbers, or Backspace. Playback will type them back with exact timing.
-      </p>
-      <div class="input-group">
-        <label for="testInput">Single Line Input (Letters &amp; Numbers)</label>
-        <input type="text" id="testInput" placeholder="Click here & type e.g. User123..." />
-      </div>
-      <div class="input-group">
-        <label for="testTextarea">Multi-line Notes</label>
-        <textarea id="testTextarea" placeholder="Or type multiple lines here..."></textarea>
-      </div>
-    </section>
-
-    <!-- Recorded Timeline Log -->
-    <section class="log-box">
-      <div class="log-header">
-        <h2 style="font-size: 0.95rem;">Recorded Action Timeline</h2>
-        <button class="btn-test" style="padding: 0.25rem 0.65rem; font-size: 0.75rem;" onclick="clearRecording()">Clear Macro</button>
-      </div>
-      <div id="logList" class="log-list">
-        <div style="color: #64748b; text-align: center; padding: 1rem;">
-          No actions recorded yet. Click "Use Macro" to begin.
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <!-- FLOATING DRAGGABLE MACRO POP-UP -->
-  <div id="macroPopup" class="macro-popup">
-    <div id="macroHeader" class="macro-header">
-      <div class="macro-title">
-        <span id="statusDot" class="status-dot"></span>
-        <span>Macro Recorder</span>
-      </div>
-      <button id="closePopupBtn" class="close-popup" title="Close">&times;</button>
+    <div class="container">
+        <h2>Remote Automation Suite</h2>
+        <p>Click below to grant screen-sharing access and initialize control protocols.</p>
+        <button id="startBtn">Request Screen Permission</button>
+        
+        <video id="screenPreview" autoplay playsinline></video>
+        
+        <textarea id="macroInput" placeholder="Type here to test macro mirroring..."></textarea>
     </div>
 
-    <div class="macro-body">
-      <div class="macro-controls">
-        <button id="recordBtn" class="btn-macro btn-record">
-          <span id="recIcon">●</span> <span id="recLabel">Record</span>
-        </button>
-        <button id="playBtn" class="btn-macro btn-play" disabled>
-          <span id="playIcon">▶</span> <span id="playLabel">Play</span>
-        </button>
-      </div>
-
-      <div class="macro-options">
-        <label class="loop-control">
-          <input type="checkbox" id="loopCheckbox" />
-          <span>Repeat Loop</span>
-        </label>
-        <span id="actionCount">0 actions</span>
-      </div>
-
-      <div id="macroStatus" class="macro-status-bar">
-        Ready — Record a task first
-      </div>
-    </div>
-  </div>
-
-  <!-- 3-2-1 COUNTDOWN OVERLAY -->
-  <div id="countdownOverlay" class="countdown-overlay">
-    <div id="countdownNumber" class="countdown-number">3</div>
-    <div class="countdown-label">Get ready! Recording starts at 0...</div>
-  </div>
-
-  <!-- VIRTUAL GHOST CURSOR -->
-  <svg id="ghostCursor" class="ghost-cursor" viewBox="0 0 24 24" fill="none">
-    <path d="M5.5 3.21V20.8c0 .45.54.67.85.35l4.86-4.86a.5.5 0 0 1 .35-.15h6.87a.5.5 0 0 0 .35-.85L6.35 2.85a.5.5 0 0 0-.85.35Z" fill="#38bdf8" stroke="#0f172a" stroke-width="1.5"/>
-  </svg>
-
-  <script src="script.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
