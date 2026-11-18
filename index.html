@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Screen Share and Macro Recorder</title>
+    <title>Global OS Macro Controller</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -36,13 +36,8 @@
             cursor: pointer;
             margin: 5px;
         }
-        button:hover {
-            background-color: #3700b3;
-        }
-        button:disabled {
-            background-color: #444;
-            cursor: not-allowed;
-        }
+        button:hover { background-color: #3700b3; }
+        button:disabled { background-color: #444; cursor: not-allowed; }
         video {
             width: 100%;
             max-height: 150px;
@@ -61,30 +56,14 @@
             padding: 8px;
             resize: none;
         }
-        .controls-row {
-            margin-top: 15px;
-        }
-        /* Simulated cursor element for playback */
-        #playbackCursor {
-            position: absolute;
-            width: 15px;
-            height: 15px;
-            background-color: #03dac6;
-            border-radius: 50%;
-            pointer-events: none;
-            display: none;
-            z-index: 9999;
-            transition: transform 0.05s linear;
-        }
+        .controls-row { margin-top: 15px; }
     </style>
 </head>
 <body>
 
-    <div id="playbackCursor"></div>
-
     <div class="container">
-        <h2>Macro Recorder & Player</h2>
-        <p>Grant screen permission and use the recorder below.</p>
+        <h2>Global Screen Macro Recorder</h2>
+        <p>Share your <b>Entire Screen</b> to enable system-wide control.</p>
         <button id="startBtn">Request Screen Permission</button>
         
         <video id="screenPreview" autoplay playsinline></video>
@@ -92,10 +71,10 @@
         <div class="controls-row">
             <button id="recordBtn" disabled>Record</button>
             <button id="stopBtn" disabled>Stop</button>
-            <button id="playBtn" disabled>Play</button>
+            <button id="playBtn" disabled>Play (Executes Globally)</button>
         </div>
 
-        <textarea id="macroInput" placeholder="Type letters and numbers here while recording..."></textarea>
+        <textarea id="macroInput" placeholder="Type text here while recording..."></textarea>
     </div>
 
     <script src="script.js"></script>
