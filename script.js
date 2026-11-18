@@ -1,55 +1,130 @@
 document.addEventListener('DOMContentLoaded', () => {
     const startBtn = document.getElementById('startBtn');
     const screenPreview = document.getElementById('screenPreview');
+    const recordBtn = document.getElementById('recordBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const playBtn = document.getElementById('playBtn');
     const macroInput = document.getElementById('macroInput');
+    const playbackCursor = document.getElementById('playbackCursor');
 
-    // 1. Request Screen Sharing Permission upon interaction
+    let isRecording = false;
+    let isPlaying = false;
+    let recordedEvents = [];
+    let recordingStartTime = 0;
+
+    // 1. Screen Sharing Permission
     startBtn.addEventListener('click', async () => {
         try {
-            const gdmOptions = {
-                video: {
-                    cursor: "always"
-                },
-                audio: false
-            };
-
-            // This triggers the browser's native screen-share permission dialog
-            const stream = await navigator.mediaDevices.getDisplayMedia(gdmOptions);
-            
-            // Display the shared screen in the hidden/preview video element
+            const stream = await navigator.mediaDevices.getDisplayMedia({ video: { cursor: "always" }, audio: false });
             screenPreview.srcObject = stream;
             screenPreview.style.display = 'block';
-            startBtn.style.display = 'none'; // Hide button after success
-
-            console.log("Screen sharing permission granted.");
-
-            // Handle case where user stops sharing via the browser UI
-            stream.getVideoTracks()[0].onended = () => {
-                console.log("Screen sharing stopped by user.");
-                screenPreview.style.display = 'none';
-                startBtn.style.display = 'block';
-            };
-
+            startBtn.style.display = 'none';
+            
+            // Enable recording once screen is shared
+            recordBtn.disabled = false;
         } catch (error) {
             console.error("Error sharing screen:", error);
-            alert("Permission denied or error occurred while trying to share the screen.");
+            alert("Permission denied or error occurred.");
         }
     });
 
-    // 2. Mimic Typing and Cursor Movement (Macro Logic)
-    macroInput.addEventListener('input', (event) => {
-        const typedValue = event.target.value;
-        // In a full macro setup, you would transmit this data via WebSockets 
-        // to a backend automation tool (like Python's PyAutoGUI) to control 
-        // the actual host operating system cursor and keyboard.
+    // 2. Recording Logic
+    recordBtn.addEventListener('click', () => {
+        recordedEvents = [];
+        recordingStartTime = Date.now();
+        isRecording = true;
         
-        console.log("Macro Event - Simulated Typing:", typedValue);
+        recordBtn.disabled = true;
+        stopBtn.disabled = false;
+        playBtn.disabled = true;
+        macroInput.value = '';
+        macroInput.focus();
+
+        console.log("Recording started...");
     });
 
-    // Example of programmatic cursor movement simulation within the webpage DOM
+    // Capture Mouse Movements during recording
     window.addEventListener('mousemove', (e) => {
-        // Track local cursor coordinates to mirror them remotely if needed
-        const cursorData = { x: e.clientX, y: e.clientY };
-        // console.log("Cursor Position:", cursorData);
+        if (!isRecording) return;
+        const timestamp = Date.now() - recordingStartTime;
+        recordedEvents.push({
+            type: 'mousemove',
+            x: e.clientX,
+            y: e.clientY,
+            time: timestamp
+        });
+    });
+
+    // Capture Typing (letters and numbers) during recording
+    macroInput.addEventListener('input', (e) => {
+        if (!isRecording) return;
+        const timestamp = Date.now() - recordingStartTime;
+        recordedEvents.push({
+            type: 'input',
+            value: macroInput.value,
+            time: timestamp
+        });
+    });
+
+    // 3. Stop Recording
+    stopBtn.addEventListener('click', () => {
+        if (!isRecording && !isPlaying) return;
+        
+        isRecording = false;
+        isPlaying = false;
+        
+        recordBtn.disabled = false;
+        stopBtn.disabled = true;
+        playBtn.disabled = recordedEvents.length === 0;
+        playbackCursor.style.display = 'none';
+
+        console.log("Recording stopped. Total events captured:", recordedEvents.length);
+    });
+
+    // 4. Playback Logic
+    playBtn.addEventListener('click', () => {
+        if (recordedEvents.length === 0) return;
+
+        isPlaying = true;
+        recordBtn.disabled = true;
+        stopBtn.disabled = false;
+        playBtn.disabled = true;
+        macroInput.value = '';
+        playbackCursor.style.display = 'block';
+
+        console.log("Playback started...");
+
+        const playbackStartTime = Date.now();
+
+        // Execute each recorded event at its relative timestamp
+        recordedEvents.forEach(event => {
+            setTimeout(() => {
+                if (!isPlaying) return; // Stop if user clicked Stop
+
+                if (event.type === 'mousemove') {
+                    // Move the visual cursor
+                    playbackCursor.style.left = `${event.x}px`;
+                    playbackCursor.style.top = `${event.y}px`;
+                } else if (event.type === 'input') {
+                    // Mimic the typed letters and numbers
+                    macroInput.value = event.value;
+                }
+
+                // Check if this is the last event
+                if (event === recordedEvents[recordedEvents.length - 1]) {
+                    setTimeout(() => {
+                        if (isPlaying) {
+                            isPlaying = false;
+                            stopBtn.disabled = true;
+                            recordBtn.disabled = false;
+                            playBtn.disabled = false;
+                            playbackCursor.style.display = 'none';
+                            console.log("Playback finished.");
+                        }
+                    }, 500);
+                }
+
+            }, event.time);
+        });
     });
 });
