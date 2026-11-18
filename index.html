@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Visual Macro Recorder & Clicker</title>
+    <title>Visual Screen Macro Recorder & Clicker</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -13,23 +13,41 @@
             flex-direction: column;
             align-items: center;
             justify-content: flex-start;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
-            overflow: hidden;
+            padding: 20px;
         }
 
         .workspace {
             position: relative;
             width: 800px;
-            height: 400px;
+            height: 450px;
             background: #1e1e1e;
             border: 2px dashed #444;
-            margin-top: 20px;
+            margin-top: 15px;
             border-radius: 8px;
             overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
-        /* Simulated Tab / Clickable Target */
+        /* Video feed for screen sharing */
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: none;
+        }
+
+        .placeholder-text {
+            position: absolute;
+            color: #666;
+            font-size: 16px;
+            pointer-events: none;
+        }
+
+        /* Simulated Tab / Clickable Target inside workspace */
         .tab-button {
             position: absolute;
             top: 20px;
@@ -40,6 +58,7 @@
             padding: 8px 16px;
             border-radius: 4px;
             cursor: pointer;
+            z-index: 10;
         }
         .tab-button.active {
             background-color: #6200ee;
@@ -97,17 +116,23 @@
     <!-- Custom Cursor Element -->
     <div id="customCursor"></div>
 
+    <div class="controls-top">
+        <button id="startShareBtn">Share Screen</button>
+    </div>
+
     <div class="workspace" id="workspace">
+        <div class="placeholder-text" id="placeholderText">Click "Share Screen" to begin</div>
+        <video id="screenPreview" autoplay playsinline></video>
         <!-- Clickable Target / Simulated New Tab -->
         <button id="simulatedTab" class="tab-button">+ New Tab</button>
     </div>
 
     <div class="controls">
-        <button id="recordBtn">Record</button>
+        <button id="recordBtn" disabled>Record</button>
         <button id="stopBtn" disabled>Stop</button>
         <button id="playBtn" disabled>Play</button>
         <br>
-        <textarea id="macroInput" placeholder="Type numbers and letters here while recording..."></textarea>
+        <textarea id="macroInput" placeholder="Type text here while recording..."></textarea>
     </div>
 
     <script src="script.js"></script>
